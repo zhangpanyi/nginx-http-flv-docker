@@ -2,9 +2,13 @@ FROM centos:7
 
 ENV NGINX_VERSION=1.16.1
 ENV HTTP_FLV_MODULE_VERSION=1.2.7
+ENV NGINX_TMEP_PATH=/var/lib/nginx/tmp
 
 RUN yum update -y
 RUN yum install curl wget gcc make openssl-devel libxslt-devel pcre-devel zlib-devel -y
+
+RUN adduser nginx
+RUN mkdir -p ${NGINX_TMEP_PATH}
 
 RUN mkdir -p /tempDir && cd /tempDir \
     && wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
@@ -19,11 +23,11 @@ RUN mkdir -p /tempDir && cd /tempDir \
         --conf-path=/etc/nginx/nginx.conf \
         --error-log-path=/var/log/nginx/error.log \
         --http-log-path=/var/log/nginx/access.log \
-        --http-client-body-temp-path=/var/lib/nginx/tmp/client_body \
-        --http-proxy-temp-path=/var/lib/nginx/tmp/proxy \
-        --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi \
-        --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi \
-        --http-scgi-temp-path=/var/lib/nginx/tmp/scgi \
+        --http-client-body-temp-path=${NGINX_TMEP_PATH}/client_body \
+        --http-proxy-temp-path=${NGINX_TMEP_PATH}/proxy \
+        --http-fastcgi-temp-path=${NGINX_TMEP_PATH}/fastcgi \
+        --http-uwsgi-temp-path=${NGINX_TMEP_PATH}/uwsgi \
+        --http-scgi-temp-path=${NGINX_TMEP_PATH}/scgi \
         --pid-path=/run/nginx.pid \
         --lock-path=/run/lock/subsys/nginx \
         --user=nginx \
@@ -34,8 +38,14 @@ RUN mkdir -p /tempDir && cd /tempDir \
     && make && make install \
     && rm -rf /tempDir
 
+RUN yum clean headers \
+    && yum clean packages \
+    && yum clean metadata
+
 RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
+
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 EXPOSE 1935
